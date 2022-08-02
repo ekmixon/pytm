@@ -51,9 +51,7 @@ class var(object):
         # when x.d is called we get here
         # instance = x
         # owner = type(x)
-        if instance is None:
-            return self
-        return self.data.get(instance, self.default)
+        return self if instance is None else self.data.get(instance, self.default)
 
     def __set__(self, instance, value):
         # called when x.d = val
@@ -61,10 +59,9 @@ class var(object):
         # value = val
         if instance in self.data:
             raise ValueError(
-                "cannot overwrite {}.{} value with {}, already set to {}".format(
-                    instance, self.__class__.__name__, value, self.data[instance]
-                )
+                f"cannot overwrite {instance}.{self.__class__.__name__} value with {value}, already set to {self.data[instance]}"
             )
+
         self.data[instance] = value
         if self.onSet is not None:
             self.onSet(instance, value)
@@ -73,7 +70,7 @@ class var(object):
 class varString(var):
     def __set__(self, instance, value):
         if not isinstance(value, str):
-            raise ValueError("expecting a String value, got a {}".format(type(value)))
+            raise ValueError(f"expecting a String value, got a {type(value)}")
         super().__set__(instance, value)
 
 
@@ -92,21 +89,21 @@ class varStrings(var):
 class varBoundary(var):
     def __set__(self, instance, value):
         if not isinstance(value, Boundary):
-            raise ValueError("expecting a Boundary value, got a {}".format(type(value)))
+            raise ValueError(f"expecting a Boundary value, got a {type(value)}")
         super().__set__(instance, value)
 
 
 class varBool(var):
     def __set__(self, instance, value):
         if not isinstance(value, bool):
-            raise ValueError("expecting a boolean value, got a {}".format(type(value)))
+            raise ValueError(f"expecting a boolean value, got a {type(value)}")
         super().__set__(instance, value)
 
 
 class varInt(var):
     def __set__(self, instance, value):
         if not isinstance(value, int):
-            raise ValueError("expecting an integer value, got a {}".format(type(value)))
+            raise ValueError(f"expecting an integer value, got a {type(value)}")
         super().__set__(instance, value)
 
 
@@ -126,9 +123,9 @@ class varElement(var):
     def __set__(self, instance, value):
         if not isinstance(value, Element):
             raise ValueError(
-                "expecting an Element (or inherited) "
-                "value, got a {}".format(type(value))
+                f"expecting an Element (or inherited) value, got a {type(value)}"
             )
+
         super().__set__(instance, value)
 
 
@@ -137,10 +134,9 @@ class varElements(var):
         for i, e in enumerate(value):
             if not isinstance(e, Element):
                 raise ValueError(
-                    "expecting a list of Elements, item number {} is a {}".format(
-                        i, type(e)
-                    )
+                    f"expecting a list of Elements, item number {i} is a {type(e)}"
                 )
+
         super().__set__(instance, list(value))
 
 
@@ -149,38 +145,37 @@ class varFindings(var):
         for i, e in enumerate(value):
             if not isinstance(e, Finding):
                 raise ValueError(
-                    "expecting a list of Findings, item number {} is a {}".format(
-                        i, type(e)
-                    )
+                    f"expecting a list of Findings, item number {i} is a {type(e)}"
                 )
+
         super().__set__(instance, list(value))
 
 
 class varAction(var):
     def __set__(self, instance, value):
         if not isinstance(value, Action):
-            raise ValueError("expecting an Action, got a {}".format(type(value)))
+            raise ValueError(f"expecting an Action, got a {type(value)}")
         super().__set__(instance, value)
 
 
 class varClassification(var):
     def __set__(self, instance, value):
         if not isinstance(value, Classification):
-            raise ValueError("expecting a Classification, got a {}".format(type(value)))
+            raise ValueError(f"expecting a Classification, got a {type(value)}")
         super().__set__(instance, value)
 
 
 class varLifetime(var):
     def __set__(self, instance, value):
         if not isinstance(value, Lifetime):
-            raise ValueError("expecting a Lifetime, got a {}".format(type(value)))
+            raise ValueError(f"expecting a Lifetime, got a {type(value)}")
         super().__set__(instance, value)
 
 
 class varTLSVersion(var):
     def __set__(self, instance, value):
         if not isinstance(value, TLSVersion):
-            raise ValueError("expecting a TLSVersion, got a {}".format(type(value)))
+            raise ValueError(f"expecting a TLSVersion, got a {type(value)}")
         super().__set__(instance, value)
 
 
@@ -203,10 +198,9 @@ class varData(var):
         for i, e in enumerate(value):
             if not isinstance(e, Data):
                 raise ValueError(
-                    "expecting a list of pytm.Data, item number {} is a {}".format(
-                        i, type(e)
-                    )
+                    f"expecting a list of pytm.Data, item number {i} is a {type(e)}"
                 )
+
         super().__set__(instance, DataSet(value))
 
 
@@ -214,26 +208,20 @@ class DataSet(set):
     def __contains__(self, item):
         if isinstance(item, str):
             return item in [d.name for d in self]
-        if isinstance(item, Data):
-            return super().__contains__(item)
-        return NotImplemented
+        return super().__contains__(item) if isinstance(item, Data) else NotImplemented
 
     def __eq__(self, other):
         if isinstance(other, set):
             return super().__eq__(other)
-        if isinstance(other, str):
-            return other in self
-        return NotImplemented
+        return other in self if isinstance(other, str) else NotImplemented
 
     def __ne__(self, other):
         if isinstance(other, set):
             return super().__ne__(other)
-        if isinstance(other, str):
-            return other not in self
-        return NotImplemented
+        return other not in self if isinstance(other, str) else NotImplemented
 
     def __str__(self):
-        return ", ".join(sorted(set(d.name for d in self)))
+        return ", ".join(sorted({d.name for d in self}))
 
 
 class Action(Enum):
@@ -470,12 +458,13 @@ def _describe_classes(classes):
         if klass is None:
             logger.error("No such class to describe: %s\n", name)
             sys.exit(1)
-        print("{} class attributes:".format(name))
-        attrs = []
-        for i in dir(klass):
-            if i.startswith("_") or callable(getattr(klass, i)):
-                continue
-            attrs.append(i)
+        print(f"{name} class attributes:")
+        attrs = [
+            i
+            for i in dir(klass)
+            if not i.startswith("_") and not callable(getattr(klass, i))
+        ]
+
         longest = len(max(attrs, key=len)) + 2
         for i in attrs:
             attr = getattr(klass, i, {})
@@ -486,7 +475,7 @@ def _describe_classes(classes):
                 if attr.required:
                     docs.append("required")
                 if attr.default or isinstance(attr.default, bool):
-                    docs.append("default: {}".format(attr.default))
+                    docs.append(f"default: {attr.default}")
             lpadding = f'\n{" ":<{longest+2}}'
             print(f"  {i:<{longest}}{lpadding.join(docs)}")
         print()
@@ -566,9 +555,7 @@ to a boolean True or False""",
         return "{0}({1})".format(type(self).__name__, self.id)
 
     def apply(self, target):
-        if not isinstance(target, self.target):
-            return None
-        return eval(self.condition)
+        return eval(self.condition) if isinstance(target, self.target) else None
 
 
 class Finding:
@@ -604,11 +591,7 @@ Can be one of:
         *args,
         **kwargs,
     ):
-        if args:
-            element = args[0]
-        else:
-            element = kwargs.pop("element", Element("invalid"))
-
+        element = args[0] if args else kwargs.pop("element", Element("invalid"))
         self.target = element.name
         self.element = element
         attrs = [
@@ -620,14 +603,13 @@ Can be one of:
             "references",
             "condition",
         ]
-        threat = kwargs.pop("threat", None)
-        if threat:
+        if threat := kwargs.pop("threat", None):
             kwargs["threat_id"] = getattr(threat, "id")
             for a in attrs:
                 # copy threat attrs into kwargs to allow to override them in next step
                 kwargs[a] = getattr(threat, a)
 
-        threat_id = kwargs.get("threat_id", None)
+        threat_id = kwargs.get("threat_id")
         for f in element.overrides:
             if f.threat_id != threat_id:
                 continue
@@ -731,13 +713,11 @@ with same properties, except name and notes""",
             if not e.inScope:
                 continue
 
-            override_ids = set(f.threat_id for f in e.overrides)
+            override_ids = {f.threat_id for f in e.overrides}
             # if element is a dataflow filter out overrides from source and sink
             # because they will be always applied there anyway
             try:
-                override_ids -= set(
-                    f.threat_id for f in e.source.overrides + e.sink.overrides
-                )
+                override_ids -= {f.threat_id for f in e.source.overrides + e.sink.overrides}
             except AttributeError:
                 pass
 
@@ -812,13 +792,7 @@ a brief description of the system being modeled."""
                     continue
 
                 raise ValueError(
-                    "Duplicate Dataflow found between {} and {}: "
-                    "{} is same as {}".format(
-                        left.source,
-                        left.sink,
-                        left,
-                        right,
-                    )
+                    f"Duplicate Dataflow found between {left.source} and {left.sink}: {left} is same as {right}"
                 )
 
     def _dfd_template(self):
@@ -854,7 +828,7 @@ a brief description of the system being modeled."""
 
         edges = []
         # since boundaries can be nested sort them by level and start from top
-        parents = set(b.inBoundary for b in TM._boundaries if b.inBoundary)
+        parents = {b.inBoundary for b in TM._boundaries if b.inBoundary}
 
         # TODO boundaries should not be drawn if they don't contain elements matching requested levels
         # or contain only empty boundaries
@@ -871,17 +845,23 @@ a brief description of the system being modeled."""
                     max_level = i
 
         for i in range(max_level, -1, -1):
-            for b in sorted(boundary_levels[i], key=lambda b: b.name):
-                edges.append(b.dfd(**kwargs))
+            edges.extend(
+                b.dfd(**kwargs)
+                for b in sorted(boundary_levels[i], key=lambda b: b.name)
+            )
 
         if self.mergeResponses:
             for e in TM._flows:
                 if e.response is not None:
                     e.response._is_drawn = True
         kwargs["mergeResponses"] = self.mergeResponses
-        for e in TM._elements:
-            if not e._is_drawn and not isinstance(e, Boundary) and e.inBoundary is None:
-                edges.append(e.dfd(**kwargs))
+        edges.extend(
+            e.dfd(**kwargs)
+            for e in TM._elements
+            if not e._is_drawn
+            and not isinstance(e, Boundary)
+            and e.inBoundary is None
+        )
 
         return self._dfd_template().format(
             edges=indent("\n".join(filter(len, edges)), "    ")
@@ -917,8 +897,8 @@ a brief description of the system being modeled."""
             )
             note = ""
             if e.note != "":
-                note = "\nnote left\n{}\nend note".format(e.note)
-            messages.append("{}{}".format(message, note))
+                note = f"\nnote left\n{e.note}\nend note"
+            messages.append(f"{message}{note}")
 
         return self._seq_template().format(
             participants="\n".join(participants), messages="\n".join(messages)
@@ -984,7 +964,7 @@ a brief description of the system being modeled."""
             _describe_classes(result.describe.split())
 
         if result.list is True:
-            [print("{} - {}".format(t.id, t.description)) for t in TM._threats]
+            [print(f"{t.id} - {t.description}") for t in TM._threats]
 
         if result.stale_days is not None:
             print(self._stale(result.stale_days))
@@ -993,8 +973,9 @@ a brief description of the system being modeled."""
         try:
             base_path = os.path.dirname(sys.argv[0])
             tm_mtime = datetime.fromtimestamp(
-                os.stat(base_path + f"/{sys.argv[0]}").st_mtime
+                os.stat(f"{base_path}/{sys.argv[0]}").st_mtime
             )
+
         except os.error as err:
             sys.stderr.write(f"{sys.argv[0]} - {err}\n")
             sys.stderr.flush()
@@ -1006,9 +987,7 @@ a brief description of the system being modeled."""
 
             for src in e.sourceFiles:
                 try:
-                    src_mtime = datetime.fromtimestamp(
-                        os.stat(base_path + f"/{src}").st_mtime
-                    )
+                    src_mtime = datetime.fromtimestamp(os.stat(f"{base_path}/{src}").st_mtime)
                 except os.error as err:
                     sys.stderr.write(f"{sys.argv[0]} - {err}\n")
                     sys.stderr.flush()
@@ -1040,7 +1019,7 @@ a brief description of the system being modeled."""
             else:
                 os.mkdir("./sqldump")
 
-        db = DAL("sqlite://" + filename, folder="sqldump")
+        db = DAL(f"sqlite://{filename}", folder="sqldump")
 
         for klass in (
             Server,
@@ -1149,7 +1128,7 @@ a custom response, CVSS score or override other attributes.""",
     def dfd(self, **kwargs):
         self._is_drawn = True
 
-        levels = kwargs.get("levels", None)
+        levels = kwargs.get("levels")
         if levels and not levels & self.levels:
             return ""
 
@@ -1161,10 +1140,7 @@ a custom response, CVSS score or override other attributes.""",
         )
 
     def _color(self):
-        if self.inScope is True:
-            return "black"
-        else:
-            return "grey69"
+        return "black" if self.inScope is True else "grey69"
 
     def display_name(self):
         return self.name
@@ -1396,7 +1372,7 @@ class Lambda(Asset):
     def dfd(self, **kwargs):
         self._is_drawn = True
 
-        levels = kwargs.get("levels", None)
+        levels = kwargs.get("levels")
         if levels and not levels & self.levels:
             return ""
 
@@ -1509,7 +1485,7 @@ that are necessary for its legitimate purpose.""",
     def dfd(self, **kwargs):
         self._is_drawn = True
 
-        levels = kwargs.get("levels", None)
+        levels = kwargs.get("levels")
         if levels and not levels & self.levels:
             return ""
 
@@ -1649,9 +1625,7 @@ of credentials used to authenticate the destination""",
         TM._flows.append(self)
 
     def display_name(self):
-        if self.order == -1:
-            return self.name
-        return "({}) {}".format(self.order, self.name)
+        return self.name if self.order == -1 else f"({self.order}) {self.name}"
 
     def _dfd_template(self):
         return """{source} -> {sink} [
@@ -1665,7 +1639,7 @@ of credentials used to authenticate the destination""",
     def dfd(self, mergeResponses=False, **kwargs):
         self._is_drawn = True
 
-        levels = kwargs.get("levels", None)
+        levels = kwargs.get("levels")
         if (
             levels
             and not levels & self.levels
@@ -1724,13 +1698,13 @@ class Boundary(Element):
 
         self._is_drawn = True
 
-        logger.debug("Now drawing boundary " + self.name)
+        logger.debug(f"Now drawing boundary {self.name}")
         edges = []
         for e in TM._elements:
             if e.inBoundary != self or e._is_drawn:
                 continue
             # The content to draw can include Boundary objects
-            logger.debug("Now drawing content {}".format(e.name))
+            logger.debug(f"Now drawing content {e.name}")
             edges.append(e.dfd(**kwargs))
         return self._dfd_template().format(
             uniq_name=self._uniq_name(),
@@ -1877,5 +1851,4 @@ into the named sqlite file (erased if exists)""",
         type=int,
     )
 
-    _args = _parser.parse_args()
-    return _args
+    return _parser.parse_args()

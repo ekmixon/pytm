@@ -168,10 +168,10 @@ class TestAttributes(unittest.TestCase):
         self.assertListEqual(worker.outputs, [worker_query])
 
         self.assertListEqual(cookie.carriedBy, [req_get, req_post])
-        self.assertSetEqual(set(cookie.processedBy), set([user, server]))
+        self.assertSetEqual(set(cookie.processedBy), {user, server})
         self.assertIn(cookie, req_get.data)
         self.assertSetEqual(
-            set([d.name for d in req_post.data]), set([cookie.name, "HTTP", "JSON"])
+            {d.name for d in req_post.data}, {cookie.name, "HTTP", "JSON"}
         )
 
 
@@ -222,8 +222,5 @@ class TestMethod(unittest.TestCase):
             t = Threat(SID="", target=default_target, condition=case["condition"])
             self.assertTrue(
                 t.apply(case["target"]),
-                "Failed to match {} against {}".format(
-                    case["target"],
-                    case["condition"],
-                ),
+                f'Failed to match {case["target"]} against {case["condition"]}',
             )
